@@ -3,419 +3,505 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>極致賀卡製作機 (Phaser引擎版)</title>
     
-    <!-- App 偽裝模式 -->
+    <!-- App 偽裝模式設定 -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="賀卡製作">
 
-    <!-- 1. 引入 Phaser 3 遊戲引擎 (來自 CDN) -->
-    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
-
+    <title>節日賀卡製作機 v12.0 全版隨機位置版</title>
     <style>
-        body { margin: 0; padding: 0; background: #000; overflow: hidden; touch-action: none; font-family: "Microsoft JhengHei", sans-serif; }
-        
-        /* 開始畫面 (HTML 層) - 為了處理音效解鎖 */
+        /* --- 基礎設定 --- */
+        body { 
+            margin: 0; padding: 0; 
+            font-family: "Microsoft JhengHei", "Heiti TC", sans-serif; 
+            overflow: hidden; 
+            display: flex; flex-direction: column; 
+            height: 100vh; 
+            background-color: #333; 
+            touch-action: none; 
+            -webkit-user-select: none; user-select: none;
+        }
+
+        /* --- 開始畫面 --- */
         #start-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
-            z-index: 9999; display: flex; flex-direction: column;
-            justify-content: center; align-items: center; color: white;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            z-index: 9999;
+            display: flex; justify-content: center; align-items: center;
+            flex-direction: column;
+            color: white;
             transition: opacity 0.5s;
         }
-        .btn-start {
-            font-size: 2rem; padding: 15px 40px; border-radius: 50px;
-            background: #fff; color: #333; border: none; font-weight: bold;
-            cursor: pointer; box-shadow: 0 0 20px rgba(255,255,255,0.5);
-            animation: pulse 1.5s infinite;
+
+        .start-box {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 40px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            border: 2px solid rgba(255,255,255,0.3);
         }
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+
+        .start-box h1 { margin: 0 0 20px 0; font-size: 3rem; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
+        .start-box p { font-size: 1.2rem; margin-bottom: 30px; opacity: 0.9; }
+
+        #start-btn {
+            font-size: 2rem; padding: 15px 50px;
+            border: none; border-radius: 50px;
+            background-color: #ffeb3b; color: #333;
+            font-weight: bold; cursor: pointer;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            transition: transform 0.2s, background 0.2s;
+            animation: pulse 2s infinite;
+        }
+        #start-btn:active { transform: scale(0.95); }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        /* --- 頂部主題選擇區 --- */
+        #top-bar {
+            height: 80px; background-color: #fff;
+            display: flex; justify-content: center; align-items: center;
+            gap: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); z-index: 100;
+            padding-top: env(safe-area-inset-top); flex-shrink: 0;
+        }
+
+        .theme-btn {
+            font-size: 1.1rem; padding: 8px 20px; border: none; border-radius: 50px;
+            cursor: pointer; font-weight: bold; color: white;
+            box-shadow: 0 4px 0 rgba(0,0,0,0.2); transition: transform 0.1s;
+            white-space: nowrap;
+        }
+        .theme-btn:active { transform: translateY(4px); box-shadow: none; }
+        .btn-xmas { background-color: #2e7d32; }
+        .btn-newyear { background-color: #d32f2f; }
+        .btn-bday { background-color: #f06292; }
+
+        /* --- 主工作區 --- */
+        #workspace { 
+            display: flex; flex: 1; overflow: hidden; 
+            padding-bottom: env(safe-area-inset-bottom);
+            position: relative;
+        }
+
+        /* --- 左側選單 --- */
+        #sidebar { 
+            width: 28%; background-color: #f5f5f5; border-right: 5px solid #ddd; 
+            display: flex; flex-direction: column; align-items: center; 
+            padding-top: 10px; 
+            overflow-y: auto; 
+            -webkit-overflow-scrolling: touch;
+            z-index: 20;
+        }
+
+        .mode-controls { display: flex; gap: 10px; margin-bottom: 10px; flex-shrink: 0; }
+        .mode-btn { 
+            padding: 8px 12px; border-radius: 8px; border: 2px solid #555; 
+            background: white; font-size: 1rem; cursor: pointer; font-weight: bold; 
+        }
+        .mode-btn.active { background: #555; color: white; }
+
+        /* 雙排顯示貼紙 */
+        #sticker-list {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            width: 95%;
+            padding-bottom: 40px; 
+            justify-items: center;
+            align-content: start;
+        }
+
+        .sticker-container { 
+            display: flex; flex-direction: column; align-items: center; 
+            margin: 5px 0; flex-shrink: 0; 
+        }
+        
+        .sticker-source { 
+            font-size: 4rem; cursor: grab; line-height: 1; transition: transform 0.1s; 
+        }
+        .sticker-source:active { transform: scale(1.2); }
+        .sticker-label { font-size: 0.9rem; color: #555; margin-top: 2px; font-weight: bold; }
+
+        /* --- 右側賀卡區 --- */
+        #card-area { 
+            position: relative; width: 72%; height: 100%; 
+            background-color: white; 
+            box-shadow: inset 0 0 30px rgba(0,0,0,0.1); 
+            overflow: hidden; transition: background 0.5s; 
+        }
+
+        #text-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 0;
+            display: flex; flex-direction: column; justify-content: space-between;
+            padding: 40px; box-sizing: border-box;
+        }
+
+        .text-field { font-size: 1.5rem; color: #444; font-weight: bold; opacity: 0.7; }
+        .dashed-line { border-bottom: 3px dashed #666; display: inline-block; width: 200px; margin-left: 10px; }
+        
+        #greeting-text {
+            text-align: center; font-size: 4rem; font-weight: 900; 
+            text-shadow: 2px 2px 0px rgba(255,255,255,0.8);
+            color: #333; margin-top: -50px; line-height: 1.2;
+        }
+
+        #drawing-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; touch-action: none; }
+        
+        .placed-sticker { 
+            position: absolute; 
+            z-index: 10; cursor: move; touch-action: none; 
+            filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.2));
+            /* 彈出動畫 */
+            animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes popIn {
+            0% { transform: translate(-50%, -50%) scale(0); }
+            100% { transform: translate(-50%, -50%) scale(1); }
+        }
+        
+        #clear-btn { 
+            position: absolute; bottom: 20px; right: 20px; 
+            background-color: #ff5252; color: white; border: none; 
+            padding: 15px 30px; border-radius: 50px; font-size: 1.5rem; 
+            box-shadow: 2px 2px 10px rgba(0,0,0,0.3); cursor: pointer; z-index: 20; 
+        }
+        #clear-btn:active { transform: scale(0.95); }
+
+        /* --- 手機版響應式 --- */
+        @media (max-width: 768px) {
+            .start-box h1 { font-size: 2rem; }
+            .start-box p { font-size: 1rem; }
+            #start-btn { font-size: 1.5rem; padding: 12px 40px; }
+            
+            #top-bar { height: 60px; gap: 10px; }
+            .theme-btn { font-size: 0.9rem; padding: 6px 12px; }
+            #workspace { flex-direction: column-reverse; }
+
+            #sidebar { 
+                width: 100%; height: 160px; 
+                border-right: none; border-top: 5px solid #ddd;
+                flex-direction: row; padding: 5px; align-items: center; overflow-x: auto;
+            }
+
+            .mode-controls { 
+                flex-direction: column; margin-bottom: 0; margin-right: 10px; transform: scale(0.9);
+            }
+            .mode-btn { padding: 5px 8px; font-size: 0.9rem; }
+
+            #sticker-list {
+                display: flex; flex-direction: row; flex-wrap: wrap; 
+                justify-content: center; gap: 8px; width: 100%; height: 100%; align-content: center;
+            }
+            
+            .sticker-source { font-size: 3rem; }
+            .sticker-label { display: none; }
+
+            #card-area { width: 100%; flex: 1; }
+            #text-overlay { padding: 20px; }
+            #greeting-text { font-size: 2.5rem; margin-top: -20px; }
+            .text-field { font-size: 1rem; }
+            .dashed-line { width: 100px; }
+            
+            #clear-btn { padding: 10px 20px; font-size: 1.2rem; bottom: 10px; right: 10px; }
+        }
     </style>
 </head>
 <body>
 
-    <!-- HTML UI 層：開始按鈕 -->
+    <!-- 音樂播放器 -->
+    <audio id="bgm-player" loop></audio>
+
+    <!-- 開始畫面 Overlay -->
     <div id="start-overlay">
-        <h1 style="font-size: 3rem; text-shadow: 0 5px 10px rgba(0,0,0,0.5);">✨ 魔法賀卡製作機 ✨</h1>
-        <p style="font-size: 1.2rem; opacity: 0.8; margin-bottom: 30px;">請解除靜音以獲得最佳體驗</p>
-        <button class="btn-start" onclick="startGame()">開始體驗 ▶️</button>
+        <div class="start-box">
+            <h1>✨ 節日賀卡製作機 ✨</h1>
+            <p>請確認您的裝置<b>未處於靜音模式</b><br>並開啟音量</p>
+            <button id="start-btn" onclick="startApp()">開始製作 ▶️</button>
+        </div>
     </div>
 
-    <!-- 遊戲容器 -->
-    <div id="game-container"></div>
+    <div id="top-bar">
+        <button class="theme-btn btn-xmas" onclick="changeTheme('christmas')">🎄 聖誕卡</button>
+        <button class="theme-btn btn-newyear" onclick="changeTheme('newyear')">🧧 新年卡</button>
+        <button class="theme-btn btn-bday" onclick="changeTheme('birthday')">🎂 生日卡</button>
+    </div>
 
-<script>
-    // --- 全局變數 ---
-    let game;
-    let bgMusic = null;
-    let currentThemeKey = 'christmas';
-    
-    // --- 資料庫 ---
-    const THEMES = {
-        'christmas': {
-            name: '聖誕快樂', color: 0x2e7d32, bgColor: 0xe8f5e9,
-            music: 'https://ia800504.us.archive.org/13/items/JingleBells_208/JingleBells.mp3',
-            stickers: ['🎅', '🎄', '⛄', '🦌', '🎁', '❄️', '🔔', '🍪', '🧦', '⭐', '👼', '🏡']
-        },
-        'newyear': {
-            name: '新年快樂', color: 0xd32f2f, bgColor: 0xffcdd2,
-            music: 'https://ia801601.us.archive.org/6/items/ChineseNewYearMusic/Chinese%20New%20Year%20Music.mp3',
-            stickers: ['🧧', '🏮', '🧨', '🍊', '🦁', '✨', '🐉', '💰', '🌸', '🥟', '🐟', '🖌️']
-        },
-        'birthday': {
-            name: '生日快樂', color: 0x7b1fa2, bgColor: 0xf3e5f5,
-            music: 'https://ia800806.us.archive.org/19/items/HappyBirthdayToYou_442/Happy_Birthday_to_You.mp3',
-            stickers: ['🎂', '🎈', '🎉', '🕯️', '👑', '🎁', '🍰', '🥳', '🧁', '🍕', '🍭', '🧸']
+    <div id="workspace">
+        <div id="sidebar">
+            <div class="mode-controls">
+                <button id="mode-sticker" class="mode-btn active" onclick="setMode('sticker')">🖐️ 貼紙</button>
+                <button id="mode-draw" class="mode-btn" onclick="setMode('draw')">🖍️ 畫畫</button>
+            </div>
+            <div id="sticker-list"></div>
+        </div>
+
+        <div id="card-area">
+            <div id="text-overlay">
+                <div class="text-field" style="text-align: left;">To:<span class="dashed-line"></span></div>
+                <div id="greeting-text">MERRY CHRISTMAS</div>
+                <div class="text-field" style="text-align: right;">From:<span class="dashed-line"></span></div>
+            </div>
+            <canvas id="drawing-canvas"></canvas>
+            <button id="clear-btn" onclick="clearAll()">🗑️ 清除重來</button>
+        </div>
+    </div>
+
+    <script>
+        function startApp() {
+            document.getElementById('start-overlay').style.opacity = '0';
+            setTimeout(() => {
+                document.getElementById('start-overlay').style.display = 'none';
+            }, 500);
+
+            const audioPlayer = document.getElementById('bgm-player');
+            const data = themes[currentTheme]; 
+            if (data && data.music) {
+                audioPlayer.src = data.music;
+                audioPlayer.play().then(() => {
+                    console.log("音樂播放成功");
+                }).catch(e => {
+                    console.log("音樂播放失敗", e);
+                });
+            }
+
+            const utterance = new SpeechSynthesisUtterance(" ");
+            window.speechSynthesis.speak(utterance);
         }
-    };
 
-    // --- 啟動遊戲 ---
-    function startGame() {
-        const overlay = document.getElementById('start-overlay');
-        overlay.style.opacity = 0;
-        setTimeout(() => overlay.remove(), 500);
+        let currentTheme = 'christmas'; 
 
-        // 初始化語音
-        const u = new SpeechSynthesisUtterance(" ");
-        window.speechSynthesis.speak(u);
+        function speakText(text) {
+            if (!text) return;
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'zh-HK'; 
+            utterance.rate = 1.0; 
+            utterance.pitch = 1.3; 
+            
+            const voices = window.speechSynthesis.getVoices();
+            const hkVoice = voices.find(v => v.lang.includes('zh-HK') || v.lang.includes('Cantonese'));
+            if (hkVoice) utterance.voice = hkVoice;
+            
+            window.speechSynthesis.speak(utterance);
+        }
+        window.speechSynthesis.onvoiceschanged = function() { window.speechSynthesis.getVoices(); };
 
-        // 啟動 Phaser
-        initPhaser();
-    }
-
-    // --- 語音合成 ---
-    function speak(text) {
-        window.speechSynthesis.cancel();
-        const u = new SpeechSynthesisUtterance(text);
-        u.lang = 'zh-HK'; u.rate = 1.0; u.pitch = 1.2;
-        const voices = window.speechSynthesis.getVoices();
-        const hk = voices.find(v => v.lang.includes('zh-HK') || v.lang.includes('Cantonese'));
-        if(hk) u.voice = hk;
-        window.speechSynthesis.speak(u);
-    }
-
-    // --- Phaser 遊戲邏輯 ---
-    function initPhaser() {
-        const config = {
-            type: Phaser.AUTO,
-            scale: {
-                mode: Phaser.Scale.RESIZE, // 自動適應螢幕大小
-                parent: 'game-container',
-                width: '100%', height: '100%'
+        const themes = {
+            'christmas': {
+                greeting: 'MERRY CHRISTMAS', speechName: '聖誕快樂',
+                bg: 'linear-gradient(to bottom, #dcedc8, #ffffff)', border: '10px solid #c62828', textColor: '#2e7d32', 
+                music: 'https://ia800504.us.archive.org/13/items/JingleBells_208/JingleBells.mp3', 
+                stickers: [ 
+                    { icon: '🎅', name: '聖誕老人' }, { icon: '🎄', name: '聖誕樹' }, 
+                    { icon: '⛄', name: '雪人' }, { icon: '🦌', name: '鹿仔' }, 
+                    { icon: '🎁', name: '禮物' }, { icon: '❄️', name: '雪花' }, 
+                    { icon: '🔔', name: '叮叮鐘' }, { icon: '🍪', name: '曲奇' },
+                    { icon: '🧦', name: '聖誕襪' }, { icon: '🕯️', name: '蠟燭' },
+                    { icon: '⭐', name: '星星' }, { icon: '👼', name: '天使' },
+                    { icon: '🍫', name: '朱古力' }, { icon: '🏡', name: '雪屋' }
+                ]
             },
-            backgroundColor: '#ffffff',
-            scene: [MainScene]
+            'newyear': {
+                greeting: '新 年 快 樂', speechName: '新年快樂',
+                bg: 'linear-gradient(to bottom, #ffcdd2, #fff9c4)', border: '10px solid #fbc02d', textColor: '#d32f2f', 
+                music: 'https://ia801601.us.archive.org/6/items/ChineseNewYearMusic/Chinese%20New%20Year%20Music.mp3', 
+                stickers: [ 
+                    { icon: '🧧', name: '利是' }, { icon: '🏮', name: '燈籠' }, 
+                    { icon: '🧨', name: '炮仗' }, { icon: '🍊', name: '大吉' }, 
+                    { icon: '🦁', name: '醒獅' }, { icon: '✨', name: '煙花' }, 
+                    { icon: '🐉', name: '龍' }, { icon: '💰', name: '元寶' },
+                    { icon: '🌸', name: '桃花' }, { icon: '🥟', name: '餃子' },
+                    { icon: '🐟', name: '年年有魚' }, { icon: '🪭', name: '扇' },
+                    { icon: '🍍', name: '菠蘿' }, { icon: '🖌️', name: '揮春' }
+                ]
+            },
+            'birthday': {
+                greeting: 'HAPPY BIRTHDAY', speechName: '生日快樂',
+                bg: 'linear-gradient(to bottom, #e1bee7, #b3e5fc)', border: '10px solid #ba68c8', textColor: '#7b1fa2', 
+                music: 'https://ia800806.us.archive.org/19/items/HappyBirthdayToYou_442/Happy_Birthday_to_You.mp3', 
+                stickers: [ 
+                    { icon: '🎂', name: '生日蛋糕' }, { icon: '🎈', name: '氣球' }, 
+                    { icon: '🎉', name: '拉炮' }, { icon: '🕯️', name: '蠟燭' }, 
+                    { icon: '👑', name: '皇冠' }, { icon: '🎁', name: '禮物' }, 
+                    { icon: '🍰', name: '蛋糕' }, { icon: '🥳', name: '開心' },
+                    { icon: '🧁', name: '杯子蛋糕' }, { icon: '🍕', name: '薄餅' },
+                    { icon: '🍭', name: '波板糖' }, { icon: '🍦', name: '雪糕' },
+                    { icon: '🧸', name: '啤啤熊' }, { icon: '🎵', name: '音樂' }
+                ]
+            }
         };
-        game = new Phaser.Game(config);
-    }
 
-    class MainScene extends Phaser.Scene {
-        constructor() { super('MainScene'); }
+        let currentMode = 'sticker'; let isDragging = false; let isDrawing = false; let lastX = 0; let lastY = 0;
+        const canvas = document.getElementById('drawing-canvas'); const ctx = canvas.getContext('2d'); const cardArea = document.getElementById('card-area'); const stickerList = document.getElementById('sticker-list'); const audioPlayer = document.getElementById('bgm-player'); const greetingText = document.getElementById('greeting-text');
 
-        preload() {
-            // 這裡我們不加載圖片，而是用代碼生成圖片，這樣才能保持單一檔案
-            this.load.audio('xmas_bgm', THEMES.christmas.music);
-            this.load.audio('ny_bgm', THEMES.newyear.music);
-            this.load.audio('bday_bgm', THEMES.birthday.music);
-        }
+        function resizeCanvas() { canvas.width = cardArea.offsetWidth; canvas.height = cardArea.offsetHeight; }
+        window.addEventListener('resize', resizeCanvas);
+        document.body.addEventListener('touchmove', function(e) { 
+            if (!e.target.closest('#sidebar')) { e.preventDefault(); }
+        }, { passive: false });
 
-        create() {
-            this.stickersGroup = this.add.group(); // 存放賀卡上的貼紙
-            this.uiGroup = this.add.group();       // 存放 UI 元素
+        setupTheme('christmas');
 
-            // 1. 建立動態紋理 (Emoji -> 圖片)
-            this.createEmojiTextures();
-            this.createPatternTextures();
-
-            // 2. 佈局初始化
-            this.createLayout();
-
-            // 3. 粒子系統初始化
-            this.particles = this.add.particles('particle_white'); // 預設白色粒子
-            this.emitter = this.particles.createEmitter({
-                x: { min: 0, max: this.scale.width },
-                y: -50,
-                lifespan: 5000,
-                speedY: { min: 50, max: 150 },
-                scale: { start: 0.4, end: 0 },
-                quantity: 2,
-                blendMode: 'ADD'
-            });
-
-            // 4. 設定初始主題
-            this.changeTheme('christmas');
-
-            // 5. 處理視窗改變大小
-            this.scale.on('resize', this.resize, this);
-        }
-
-        // --- 核心：動態生成素材 (解決無圖檔問題) ---
-        createEmojiTextures() {
-            // 粒子素材
-            const gfx = this.make.graphics({x:0, y:0, add:false});
-            gfx.fillStyle(0xffffff); gfx.fillCircle(16,16,16);
-            gfx.generateTexture('particle_white', 32, 32);
-            
-            // 將所有 Emoji 轉為紋理
-            Object.values(THEMES).forEach(theme => {
-                theme.stickers.forEach(emoji => {
-                    if(!this.textures.exists(emoji)) {
-                        const canvas = document.createElement('canvas');
-                        canvas.width = 128; canvas.height = 128;
-                        const ctx = canvas.getContext('2d');
-                        ctx.font = '100px serif';
-                        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                        ctx.fillText(emoji, 64, 64);
-                        this.textures.addCanvas(emoji, canvas);
-                    }
-                });
-            });
-        }
-
-        createPatternTextures() {
-            // 聖誕斜紋
-            const canvasX = document.createElement('canvas'); canvasX.width = 64; canvasX.height = 64;
-            const ctxX = canvasX.getContext('2d');
-            ctxX.fillStyle = '#e8f5e9'; ctxX.fillRect(0,0,64,64);
-            ctxX.strokeStyle = '#c8e6c9'; ctxX.lineWidth = 10;
-            ctxX.beginPath(); ctxX.moveTo(0,64); ctxX.lineTo(64,0); ctxX.stroke();
-            this.textures.addCanvas('pattern_xmas', canvasX);
-
-            // 生日波點
-            const canvasB = document.createElement('canvas'); canvasB.width = 64; canvasB.height = 64;
-            const ctxB = canvasB.getContext('2d');
-            ctxB.fillStyle = '#f3e5f5'; ctxB.fillRect(0,0,64,64);
-            ctxB.fillStyle = '#e1bee7'; ctxB.beginPath(); ctxB.arc(32,32,10,0,Math.PI*2); ctxB.fill();
-            this.textures.addCanvas('pattern_bday', canvasB);
-        }
-
-        createLayout() {
-            const w = this.scale.width;
-            const h = this.scale.height;
-
-            // 背景圖層
-            this.bgTile = this.add.tileSprite(w/2, h/2, w, h, 'pattern_xmas');
-            
-            // 頂部按鈕欄
-            this.createTopBar();
-
-            // 左側選單背景 (半透明)
-            this.sidebarBg = this.add.rectangle(0, 80, w*0.25, h-80, 0xffffff, 0.9).setOrigin(0,0);
-            this.sidebarBorder = this.add.rectangle(w*0.25, 80, 5, h-80, 0xcccccc).setOrigin(0,0);
-            
-            // 標題文字
-            this.greetingText = this.add.text(w * 0.6, h * 0.5, 'MERRY\nCHRISTMAS', {
-                fontFamily: 'Arial Black', fontSize: '80px', color: '#2e7d32', align: 'center'
-            }).setOrigin(0.5).setAlpha(0.3); // 半透明背景字
-
-            // 貼紙選單容器
-            this.paletteContainer = this.add.container(0, 100);
-        }
-
-        createTopBar() {
-            const bar = this.add.rectangle(0, 0, this.scale.width, 80, 0xffffff).setOrigin(0,0);
-            bar.setInteractive(); // 阻擋點擊穿透
-            
-            // 三個按鈕
-            this.createThemeBtn(100, 40, '聖誕卡', 0x2e7d32, 'christmas');
-            this.createThemeBtn(300, 40, '新年卡', 0xd32f2f, 'newyear');
-            this.createThemeBtn(500, 40, '生日卡', 0x7b1fa2, 'birthday');
-            
-            // 清除按鈕
-            this.add.text(this.scale.width - 100, 40, '🗑️ 清除', { 
-                fontSize: '24px', color: '#333', backgroundColor: '#eee', padding: {x:10, y:5} 
-            })
-            .setOrigin(0.5)
-            .setInteractive({useHandCursor: true})
-            .on('pointerdown', () => {
-                this.stickersGroup.clear(true, true); // 清除所有貼紙
-                speak('清除重來');
-            });
-        }
-
-        createThemeBtn(x, y, text, color, themeKey) {
-            const btn = this.add.rectangle(x, y, 160, 50, color, 1).setInteractive({useHandCursor: true});
-            const txt = this.add.text(x, y, text, { fontSize: '20px', fontStyle: 'bold' }).setOrigin(0.5);
-            
-            // 按鈕特效
-            btn.on('pointerdown', () => {
-                this.tweens.add({ targets: [btn, txt], scaleX: 0.9, scaleY: 0.9, duration: 100, yoyo: true });
-                this.changeTheme(themeKey);
-            });
-        }
-
-        // --- 核心：切換主題邏輯 ---
-        changeTheme(key) {
-            currentThemeKey = key;
-            const data = THEMES[key];
-            
-            // 1. 播放音樂
-            if(bgMusic) bgMusic.stop();
-            // 對應的 key: xmas_bgm, ny_bgm...
-            let musicKey = key === 'christmas' ? 'xmas_bgm' : (key === 'newyear' ? 'ny_bgm' : 'bday_bgm');
-            bgMusic = this.sound.add(musicKey, { loop: true, volume: 0.5 });
-            bgMusic.play();
-
-            // 2. 改變背景與文字
-            this.greetingText.setText(data.name.replace(' ', '\n'));
-            this.greetingText.setColor('#' + data.color.toString(16));
-            
-            if(key === 'christmas') this.bgTile.setTexture('pattern_xmas');
-            else if(key === 'birthday') this.bgTile.setTexture('pattern_bday');
-            else this.bgTile.setTexture('pattern_xmas').setTint(0xffcdd2); // 新年用紅色染色的紋理
-
-            // 3. 改變粒子特效
-            this.updateParticles(key);
-
-            // 4. 重建左側選單
-            this.paletteContainer.removeAll(true);
-            
-            let row = 0;
-            let col = 0;
-            const startX = 60;
-            const startY = 0;
-            const gapX = 120;
-            const gapY = 120;
-
-            data.stickers.forEach((emoji, index) => {
-                // 在選單建立貼紙
-                const sticker = this.add.image(startX + col * gapX, startY + row * gapY, emoji);
-                sticker.setScale(0.8);
-                sticker.setInteractive({ useHandCursor: true });
-
-                // 點擊事件：生成到卡片區
-                sticker.on('pointerdown', (pointer) => {
-                    this.spawnSticker(emoji, pointer.x, pointer.y);
-                    speak(data.name); // 簡單讀出主題名，或者可以更細
-                    
-                    // 選單按鈕回饋動畫
-                    this.tweens.add({ targets: sticker, scale: 0.6, duration: 50, yoyo: true });
-                });
-
-                this.paletteContainer.add(sticker);
-
-                col++;
-                if (col > 1) { col = 0; row++; }
-            });
-            
-            speak(data.name);
-        }
-
-        updateParticles(theme) {
-            // 重置
-            this.emitter.stop();
-            
-            if (theme === 'christmas') {
-                // 雪花
-                this.emitter.setTexture('particle_white');
-                this.emitter.setSpeedY({ min: 50, max: 150 });
-                this.emitter.setGravityY(0);
-                this.emitter.setLifespan(5000);
-                this.emitter.setScale({ start: 0.4, end: 0 });
-                this.emitter.start();
-            } else if (theme === 'newyear') {
-                // 煙火火花
-                this.emitter.setTexture('particle_white');
-                this.emitter.setPosition(this.scale.width/2, this.scale.height/2);
-                this.emitter.setSpeed({ min: 100, max: 300 });
-                this.emitter.setGravityY(200);
-                this.emitter.setLifespan(1000);
-                this.emitter.setTint(0xffd700, 0xff0000); // 金色和紅色
-                this.emitter.start();
-                // 讓發射器跟隨滑鼠會有仙女棒效果
-                this.input.on('pointermove', (pointer) => {
-                    if(currentThemeKey === 'newyear') this.emitter.setPosition(pointer.x, pointer.y);
-                });
-            } else {
-                // 生日彩帶
-                this.emitter.setTexture('particle_white');
-                this.emitter.setPosition({ min: 0, max: this.scale.width }, -50);
-                this.emitter.setSpeedY({ min: 100, max: 200 });
-                this.emitter.setGravityY(50);
-                this.emitter.setTint(0xff0000, 0x00ff00, 0x0000ff, 0xffff00);
-                this.emitter.start();
-            }
-        }
-
-        // --- 核心：生成貼紙 (Juicy Effect) ---
-        spawnSticker(textureKey, startX, startY) {
-            // 隨機位置 (如果是在選單點擊，就隨機放在卡片區)
-            let targetX, targetY;
-            const sidebarWidth = this.scale.width * 0.25;
-            
-            if (startX < sidebarWidth) {
-                // 點擊生成的
-                targetX = sidebarWidth + 50 + Math.random() * (this.scale.width - sidebarWidth - 100);
-                targetY = 100 + Math.random() * (this.scale.height - 200);
-            } else {
-                // 暫時不會用到，除非做拖曳生成
-                targetX = startX; targetY = startY;
-            }
-
-            // 建立 Sprite
-            const sprite = this.add.image(targetX, targetY, textureKey);
-            
-            // 隨機大小
-            const randomScale = 0.8 + Math.random() * 0.5;
-            sprite.setScale(0); // 一開始是 0，為了做彈出動畫
-
-            // 加入群組
-            this.stickersGroup.add(sprite);
-
-            // 啟用互動與拖曳
-            sprite.setInteractive({ draggable: true });
-            
-            // 彈出動畫 (Pop Tween)
-            this.tweens.add({
-                targets: sprite,
-                scale: randomScale,
-                duration: 600,
-                ease: 'Elastic.easeOut' // 彈性效果
-            });
-
-            // 拖曳邏輯
-            sprite.on('dragstart', () => {
-                this.children.bringToTop(sprite); // 拉到最上層
-                this.tweens.add({ targets: sprite, scale: randomScale * 1.2, duration: 100 }); // 拿起來變大
-            });
-
-            sprite.on('drag', (pointer, dragX, dragY) => {
-                sprite.x = dragX;
-                sprite.y = dragY;
-            });
-
-            sprite.on('dragend', () => {
-                // 判斷是否丟回選單區 (刪除)
-                if (sprite.x < this.scale.width * 0.25) {
-                    this.tweens.add({
-                        targets: sprite, scale: 0, duration: 200,
-                        onComplete: () => sprite.destroy()
-                    });
+        function changeTheme(themeKey) {
+            setupTheme(themeKey);
+            if (document.getElementById('start-overlay').style.display === 'none') {
+                speakText(themes[themeKey].speechName);
+                const data = themes[themeKey];
+                if (data.music) { 
+                    audioPlayer.src = data.music; 
+                    audioPlayer.play().catch(e => {}); 
                 } else {
-                    // 放下時的特效
-                    this.tweens.add({ targets: sprite, scale: randomScale, duration: 200 });
+                    audioPlayer.pause();
+                }
+            }
+        }
+
+        function setupTheme(themeKey) {
+            currentTheme = themeKey;
+            const data = themes[themeKey];
+            cardArea.style.background = data.bg; cardArea.style.border = data.border;
+            greetingText.textContent = data.greeting; greetingText.style.color = data.textColor;
+            document.querySelectorAll('.text-field').forEach(el => el.style.color = data.textColor);
+            document.querySelectorAll('.dashed-line').forEach(el => el.style.borderBottomColor = data.textColor);
+            
+            stickerList.innerHTML = '';
+            data.stickers.forEach(item => {
+                const container = document.createElement('div'); container.className = 'sticker-container';
+                const source = document.createElement('div'); source.className = 'sticker-source';
+                source.textContent = item.icon; source.setAttribute('data-speech', item.name); source.addEventListener('pointerdown', handlePointerDown);
+                const label = document.createElement('span'); label.className = 'sticker-label'; label.textContent = item.name;
+                container.appendChild(source); container.appendChild(label); stickerList.appendChild(container);
+            });
+            clearAll(); 
+        }
+
+        function getRandomSize() {
+            const isMobile = window.innerWidth < 768;
+            if (isMobile) {
+                return (Math.random() * (5 - 3) + 3) + 'rem';
+            } else {
+                return (Math.random() * (7.5 - 4) + 4) + 'rem';
+            }
+        }
+
+        function handlePointerDown(e) {
+            if (currentMode !== 'sticker') return;
+            e.preventDefault(); 
+            const source = e.target; 
+            speakText(source.getAttribute('data-speech'));
+            
+            const clone = document.createElement('div'); 
+            clone.textContent = source.textContent; 
+            clone.className = 'placed-sticker';
+            clone.style.fontSize = getRandomSize();
+            
+            // 初始設定在手指位置
+            clone.style.left = e.clientX + 'px'; 
+            clone.style.top = e.clientY + 'px'; 
+            clone.style.transform = 'translate(-50%, -50%)';
+            
+            document.body.appendChild(clone); 
+            startDrag(clone, e);
+        }
+
+        function startDrag(element, startEvent) {
+            isDragging = true; 
+            document.addEventListener('pointermove', onMove); 
+            document.addEventListener('pointerup', onUp);
+            
+            function onMove(e) { 
+                if (!isDragging) return; 
+                element.style.left = e.clientX + 'px'; 
+                element.style.top = e.clientY + 'px'; 
+            }
+
+            function onUp(e) {
+                isDragging = false; 
+                document.removeEventListener('pointermove', onMove); 
+                document.removeEventListener('pointerup', onUp);
+                
+                const sidebarRect = document.getElementById('sidebar').getBoundingClientRect();
+                const isInSidebar = e.clientX >= sidebarRect.left && 
+                                    e.clientX <= sidebarRect.right && 
+                                    e.clientY >= sidebarRect.top && 
+                                    e.clientY <= sidebarRect.bottom;
+                
+                // 判斷是否為「點擊」(移動距離很短)
+                const dist = Math.hypot(e.clientX - startEvent.clientX, e.clientY - startEvent.clientY);
+                const isTap = dist < 20;
+
+                if (isInSidebar) { 
+                    if (isTap) {
+                        // 這是「點擊加入」模式
+                        const rect = cardArea.getBoundingClientRect();
+                        
+                        // 【更新】隨機在卡片全區域生成 (預留 50px 邊距)
+                        const padding = 50; 
+                        const randomX = padding + Math.random() * (rect.width - 2 * padding);
+                        const randomY = padding + Math.random() * (rect.height - 2 * padding);
+                        
+                        element.style.left = randomX + 'px';
+                        element.style.top = randomY + 'px';
+                        cardArea.appendChild(element); // 移入卡片區
+
+                        // 再次綁定拖曳功能，讓貼上去後還能動
+                        attachDragEvent(element);
+                    } else {
+                        // 這是「拖拉失敗」或「取消」(拖回選單)
+                        element.remove(); 
+                    }
+                } else {
+                    // 這是「成功拖拉到卡片區」
+                    const rect = cardArea.getBoundingClientRect(); 
+                    element.style.left = (e.clientX - rect.left) + 'px'; 
+                    element.style.top = (e.clientY - rect.top) + 'px';
+                    cardArea.appendChild(element);
+                    attachDragEvent(element);
+                }
+            }
+        }
+
+        // 輔助函式：讓貼紙貼上後還能再次被拖曳
+        function attachDragEvent(element) {
+            element.addEventListener('pointerdown', (ev) => {
+                if(currentMode === 'sticker') { 
+                    ev.preventDefault(); 
+                    // 暫時移出到 body 以支援全螢幕拖曳
+                    const rect = cardArea.getBoundingClientRect();
+                    // 如果它在 cardArea 內，需要加上 rect.left/top 轉成全螢幕座標
+                    // 這裡簡化處理：直接讀取當前滑鼠位置作為起點
+                    element.style.left = ev.clientX + 'px'; 
+                    element.style.top = ev.clientY + 'px'; 
+                    document.body.appendChild(element); 
+                    startDrag(element, ev); 
                 }
             });
         }
 
-        resize(gameSize) {
-            const w = gameSize.width;
-            const h = gameSize.height;
-            
-            // 調整背景與UI大小
-            this.bgTile.setSize(w, h);
-            this.sidebarBg.setSize(w*0.25, h-80);
-            this.sidebarBorder.x = w*0.25;
-            this.sidebarBorder.height = h-80;
-            this.greetingText.setPosition(w*0.6, h*0.5);
+        function setMode(mode) {
+            currentMode = mode;
+            document.getElementById('mode-sticker').className = mode === 'sticker' ? 'mode-btn active' : 'mode-btn';
+            document.getElementById('mode-draw').className = mode === 'draw' ? 'mode-btn active' : 'mode-btn';
         }
 
-        update() {
-            // 讓背景紋理緩慢移動 (Parallax Effect)
-            this.bgTile.tilePositionX += 0.5;
-            this.bgTile.tilePositionY += 0.5;
-        }
-    }
-</script>
+        function getPos(e) { const rect = canvas.getBoundingClientRect(); return { x: e.clientX - rect.left, y: e.clientY - rect.top }; }
+        canvas.addEventListener('pointerdown', (e) => { if (currentMode !== 'draw') return; isDrawing = true; const pos = getPos(e); lastX = pos.x; lastY = pos.y; });
+        canvas.addEventListener('pointermove', (e) => {
+            if (!isDrawing || currentMode !== 'draw') return; const pos = getPos(e);
+            ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(pos.x, pos.y); ctx.strokeStyle = '#ff4081'; ctx.lineWidth = 8; ctx.lineCap = 'round'; ctx.stroke(); lastX = pos.x; lastY = pos.y;
+        });
+        window.addEventListener('pointerup', () => { isDrawing = false; });
+        function clearAll() { ctx.clearRect(0, 0, canvas.width, canvas.height); document.querySelectorAll('.placed-sticker').forEach(s => s.remove()); speakText("清除重來"); }
+        resizeCanvas();
+    </script>
 </body>
 </html>
