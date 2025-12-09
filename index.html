@@ -9,7 +9,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="賀卡製作">
 
-    <title>節日賀卡製作機 v13.0 華麗背景版</title>
+    <title>節日賀卡製作機 v14.0 iPhone修復版</title>
     <style>
         /* --- 基礎設定 --- */
         body { 
@@ -42,10 +42,12 @@
             backdrop-filter: blur(10px);
             box-shadow: 0 10px 30px rgba(0,0,0,0.3);
             border: 2px solid rgba(255,255,255,0.3);
+            max-width: 80%;
         }
 
         .start-box h1 { margin: 0 0 20px 0; font-size: 3rem; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
-        .start-box p { font-size: 1.2rem; margin-bottom: 30px; opacity: 0.9; }
+        .start-box p { font-size: 1.2rem; margin-bottom: 30px; opacity: 0.9; line-height: 1.6; }
+        .warning-text { color: #ffeb3b; font-weight: bold; }
 
         #start-btn {
             font-size: 2rem; padding: 15px 50px;
@@ -138,36 +140,20 @@
             transition: background 0.3s; /* 背景切換動畫 */
         }
 
-        /* 【新功能】特色背景樣式類別 (CSS Patterns)
-           使用 CSS 漸層製作圖案，不需下載圖片 
-        */
-        
-        /* 聖誕：綠白斜紋 */
+        /* 背景樣式 */
         .bg-pattern-xmas {
             background-color: #e8f5e9;
-            background-image: repeating-linear-gradient(
-                45deg,
-                #c8e6c9 0px,
-                #c8e6c9 20px,
-                #ffffff 20px,
-                #ffffff 40px
-            );
+            background-image: repeating-linear-gradient(45deg, #c8e6c9 0px, #c8e6c9 20px, #ffffff 20px, #ffffff 40px);
         }
-
-        /* 新年：紅底金點 */
         .bg-pattern-newyear {
             background-color: #ffcdd2;
             background-image: radial-gradient(circle, #fbc02d 15%, transparent 16%), radial-gradient(circle, #fbc02d 15%, transparent 16%);
-            background-size: 50px 50px;
-            background-position: 0 0, 25px 25px;
+            background-size: 50px 50px; background-position: 0 0, 25px 25px;
         }
-
-        /* 生日：夢幻紫波點 */
         .bg-pattern-birthday {
             background-color: #f3e5f5;
             background-image: radial-gradient(#e1bee7 20%, transparent 20%), radial-gradient(#ce93d8 20%, transparent 20%);
-            background-size: 40px 40px;
-            background-position: 0 0, 20px 20px;
+            background-size: 40px 40px; background-position: 0 0, 20px 20px;
         }
 
         #text-overlay {
@@ -208,6 +194,18 @@
         }
         #clear-btn:active { transform: scale(0.95); }
 
+        /* 【新功能】音樂開關按鈕 */
+        #music-btn {
+            position: absolute; top: 20px; right: 20px;
+            background: rgba(255, 255, 255, 0.8);
+            border: 2px solid #555; border-radius: 50%;
+            width: 50px; height: 50px;
+            font-size: 1.5rem; cursor: pointer; z-index: 50;
+            display: flex; justify-content: center; align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        #music-btn:active { transform: scale(0.9); }
+
         /* --- 手機版響應式 --- */
         @media (max-width: 768px) {
             .start-box h1 { font-size: 2rem; }
@@ -244,6 +242,7 @@
             .dashed-line { width: 100px; }
             
             #clear-btn { padding: 10px 20px; font-size: 1.2rem; bottom: 10px; right: 10px; }
+            #music-btn { top: 10px; right: 10px; width: 40px; height: 40px; font-size: 1.2rem; }
         }
     </style>
 </head>
@@ -256,7 +255,11 @@
     <div id="start-overlay">
         <div class="start-box">
             <h1>✨ 節日賀卡製作機 ✨</h1>
-            <p>請確認您的裝置<b>未處於靜音模式</b><br>並開啟音量</p>
+            <p>
+                ⚠️ <b>iPhone/iPad 用戶請注意</b> ⚠️<br>
+                請確認 <span class="warning-text">機身左側靜音鍵</span> 已關閉<br>
+                (不要看到紅色)，否則會沒有聲音！
+            </p>
             <button id="start-btn" onclick="startApp()">開始製作 ▶️</button>
         </div>
     </div>
@@ -277,6 +280,9 @@
         </div>
 
         <div id="card-area">
+            <!-- 音樂手動開關 -->
+            <button id="music-btn" onclick="toggleMusic()">🎵</button>
+
             <div id="text-overlay">
                 <div class="text-field" style="text-align: left;">To:<span class="dashed-line"></span></div>
                 <div id="greeting-text">MERRY CHRISTMAS</div>
@@ -298,15 +304,42 @@
             const data = themes[currentTheme]; 
             if (data && data.music) {
                 audioPlayer.src = data.music;
+                // 加入 load() 幫助 iPhone 準備
+                audioPlayer.load();
                 audioPlayer.play().then(() => {
                     console.log("音樂播放成功");
+                    updateMusicBtnState(true);
                 }).catch(e => {
-                    console.log("音樂播放失敗", e);
+                    console.log("自動播放被阻擋，等待使用者手動播放", e);
+                    updateMusicBtnState(false);
                 });
             }
 
             const utterance = new SpeechSynthesisUtterance(" ");
             window.speechSynthesis.speak(utterance);
+        }
+
+        // --- 手動控制音樂 ---
+        function toggleMusic() {
+            const player = document.getElementById('bgm-player');
+            if (player.paused) {
+                player.play();
+                updateMusicBtnState(true);
+            } else {
+                player.pause();
+                updateMusicBtnState(false);
+            }
+        }
+
+        function updateMusicBtnState(isPlaying) {
+            const btn = document.getElementById('music-btn');
+            if (isPlaying) {
+                btn.textContent = "🎵";
+                btn.style.opacity = "1";
+            } else {
+                btn.textContent = "🔇"; // 靜音圖示
+                btn.style.opacity = "0.6";
+            }
         }
 
         let currentTheme = 'christmas'; 
@@ -330,7 +363,6 @@
         const themes = {
             'christmas': {
                 greeting: 'MERRY CHRISTMAS', speechName: '聖誕快樂',
-                // 使用 bgClass 連結到 CSS 的樣式
                 bgClass: 'bg-pattern-xmas', 
                 border: '10px solid #c62828', textColor: '#2e7d32', 
                 music: 'https://ia800504.us.archive.org/13/items/JingleBells_208/JingleBells.mp3', 
@@ -389,14 +421,20 @@
 
         function changeTheme(themeKey) {
             setupTheme(themeKey);
+            // 只有當開始畫面已經消失，且音樂開關是開啟的狀態下，才嘗試自動播放
             if (document.getElementById('start-overlay').style.display === 'none') {
                 speakText(themes[themeKey].speechName);
                 const data = themes[themeKey];
-                if (data.music) { 
+                
+                // 檢查目前的音樂按鈕狀態，如果是靜音(muted)，就不要自動播放
+                const btnText = document.getElementById('music-btn').textContent;
+                
+                if (data.music && btnText === "🎵") { 
                     audioPlayer.src = data.music; 
-                    audioPlayer.play().catch(e => {}); 
+                    audioPlayer.play().catch(e => { console.log("切換主題自動播放失敗"); }); 
                 } else {
-                    audioPlayer.pause();
+                    // 如果沒有音樂連結，或者使用者已經手動關閉音樂
+                    if(!data.music) audioPlayer.pause();
                 }
             }
         }
@@ -405,8 +443,7 @@
             currentTheme = themeKey;
             const data = themes[themeKey];
             
-            // 【核心修改】移除舊的背景類別，加入新的背景類別
-            cardArea.className = ''; // 清除所有類別
+            cardArea.className = ''; 
             if (data.bgClass) {
                 cardArea.classList.add(data.bgClass);
             }
@@ -478,32 +515,24 @@
                                     e.clientY >= sidebarRect.top && 
                                     e.clientY <= sidebarRect.bottom;
                 
-                // 判斷是否為「點擊」(移動距離很短)
                 const dist = Math.hypot(e.clientX - startEvent.clientX, e.clientY - startEvent.clientY);
                 const isTap = dist < 20;
 
                 if (isInSidebar) { 
                     if (isTap) {
-                        // 這是「點擊加入」模式
                         const rect = cardArea.getBoundingClientRect();
-                        
-                        // 隨機在卡片全區域生成 (預留 50px 邊距)
                         const padding = 50; 
                         const randomX = padding + Math.random() * (rect.width - 2 * padding);
                         const randomY = padding + Math.random() * (rect.height - 2 * padding);
                         
                         element.style.left = randomX + 'px';
                         element.style.top = randomY + 'px';
-                        cardArea.appendChild(element); // 移入卡片區
-
-                        // 再次綁定拖曳功能，讓貼上去後還能動
+                        cardArea.appendChild(element); 
                         attachDragEvent(element);
                     } else {
-                        // 這是「拖拉失敗」或「取消」(拖回選單)
                         element.remove(); 
                     }
                 } else {
-                    // 這是「成功拖拉到卡片區」
                     const rect = cardArea.getBoundingClientRect(); 
                     element.style.left = (e.clientX - rect.left) + 'px'; 
                     element.style.top = (e.clientY - rect.top) + 'px';
@@ -513,12 +542,10 @@
             }
         }
 
-        // 輔助函式：讓貼紙貼上後還能再次被拖曳
         function attachDragEvent(element) {
             element.addEventListener('pointerdown', (ev) => {
                 if(currentMode === 'sticker') { 
                     ev.preventDefault(); 
-                    // 暫時移出到 body 以支援全螢幕拖曳
                     const rect = cardArea.getBoundingClientRect();
                     element.style.left = ev.clientX + 'px'; 
                     element.style.top = ev.clientY + 'px'; 
